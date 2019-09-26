@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href='{% static "css/Huploadify.css" %}' rel='stylesheet' type='text/css' />
+    <script type="text/javascript" src="../../static/jquery-1.12.4.min.js"></script>
+    <script src='{% static "axios.js" %}'></script>
+    <script src='{% static "jquery.Huploadify.js" %}'></script>
+    <title>机器学习</title>
+</head>
+<body>
+    <div id="d">
+        <center>
+                <!-- 上传文件容器 -->
+                <div id="upload"></div>
+
+            
+            
+            <table id="d2" border="1">
+                <!-- 文件数据显示 -->
+            </table>
+            <p>&nbsp;</p>
+            
+
+            SVC<input type="radio" class="svc" onclick="svc()" name="0">
+                <div id="div_svc" hidden>
+                    <input type="text" class="kernel" placeholder="输入kernel"><br>
+                    <input type="text" class="c" placeholder="输入惩罚系数"><br>
+                    <button onclick="scv_train()">开始训练</button>
+                    
+                </div>
+                <p id="p1"></p>
+
+            决策树<input type="radio" class="tree" onclick="tree()" name="0"><br>
+                <div id="div_tree" hidden>
+                    <input type="text" class="max_depth" placeholder="输入决策树深度"><br>
+                    <button onclick="tree_train()">开始训练</button>
+                    
+                </div>
+                <p id="p2"></p>
+
+                <!-- 预测模型 -->
+                <p>&nbsp;</p>
+                <div>
+                    <input type="text" class="pre" placeholder="输入特征值"><br>
+                    svc模型<input type="radio" name="predicted" value="0">
+                    决策树模型<input type="radio" name="predicted" value="1"><br>
+                    <button onclick="start_pre()">开始预测</button>
+                </div>
+                <p>&nbsp;</p>
+                <div>
+                    <table id="t2" border="1">
+
+                    </table>
+                </div>
+        </center>
+
+    </div>
+
+    <script>
+
+        function svc(){
+            $("#div_svc").show()
+            $("#div_tree").hide()
+        }
+        
+        function tree(){
+            $("#div_svc").hide()
+            $("#div_tree").show()
+        }
+
+                var file_name = ""                          // 全局变量，下面方法都可以用
+                var svc_model_name = ""                     //scv模型名
+                var tree_model_name = ""                    //决策树模型名
+
+                var up = $('#upload').Huploadify({
+                    auto:true,                                      // true 是自动上传
+                    fileTypeExts:'*.*',
+                    multi:true,
+                    fileSizeLimit:99999999999,
+                    showUploadedPercent:true,
+                    formData:{'name':'123'},
+                    showUploadedSize:true,
+                    //removeTimeout:9999999,             # 注释这行是上传完成进度条消失
+                    method: 'post',
+                    uploader:'/sub/',
+                    onUploadStart:function(file){
+                        console.log(file.name+'开始上传');
+                        
+                    },
+                    onInit:function(obj){
+                        console.log('初始化');
+                        console.log(obj);
+                    },
+
+                    onUploadSuccess:function(obj,data,response){
+                        var obj = JSON.parse(data);  //由JSON字符串转换为JSON对象
+                        
+                        var html = "<table boder=1>"
+                        //展示文件
+                        len = obj.mes.length
+    
+                        for(var i=0;i<len;i++){
+                            html+="<tr><td>"+obj.mes[i][0]+"</td><td>"+obj.mes[i][1]+"</td><td>"+obj.mes[i][2]+"</td></tr>"}
+                        html+="</table>"
+                        $("#d2").html(html)
+                    },
+
+                    
+
+                    onUploadComplete:function(file,obj,data,response){
+                        console.log(file.name+'上传完成');                    
+                        file_name = file.name
+                        
+                        
+                    },
+                    onCancel:function(file){
+                        console.log(file.name+'删除成功');
+                    },
+                    onClearQueue:function(queueItemCount){
+                        console.log('有'+queueItemCount+'个文件被删除了');
+                    },
+                    onDestroy:function(){
+                        console.log('destroyed!');
+                    },
+                    onSelect:function(file){
+                        console.log(file.name+'加入上传队列');
+                    },
+                    onQueueComplete:function(queueData){
+                        console.log('队列中的文件全部上传完成',queueData);
+                    }
+        });
+
+
+
+
+        // scv_train() 提交训练
+        function scv_train(){
+            kernel = $(".kernel").val()
+            c = $(".c").val()
+            $.ajax({
+                type:'post',
+                url:'/train_scv/',
+                data:{'kernel':kernel,'c':c,'file_name':file_name},
+                dataType:'json',
+                success:function(res){
+                    if(res.code==200){
+                        svc_model_name = res.model_name
+                        var html = ""
+                            html+="<center><p><span>模型打分：</span>"+res.mes+"</p></center>"
+                            $("#p1").html(html)
+                            $("#div_svc").hide()
+                    }else{
+                        alert(res.mes)
+                    }
+                }
+
+            })
+        }
+
+
+        // 决策树训练
+        function tree_train(){
+            max_depth = $(".max_depth").val()
+            $.ajax({
+                type:'post',
+                url:'/train_tree/',
+                data:{'max_depth':max_depth,'file_name':file_name},
+                dataType:'json',
+                success:function(res){
+                    if(res.code==200){
+                        tree_model_name = res.model_name
+                        var html = ""
+                            html+="<center><p><span>模型打分：</span>"+res.mes+"</p></center>"
+                            $("#p2").html(html)
+                            $("#div_tree").hide()
+                    }else{
+                        alert(res.mes)
+                    }
+                }
+
+            })
+        }
+
+        //模型预测
+        function start_pre(){
+            pre = $(".pre").val()
+            var redio = $('input:radio[name="predicted"]:checked').val()
+            
+            $.ajax({
+                type:'post',
+                url:'/start/',
+                data:{'svc_model_name':svc_model_name,'tree_model_name':tree_model_name,'pre':pre,'redio':redio},
+                dataType:'json',
+                success:function(res){
+                    if(res.code==200){
+                        var html="<table boder=1><tr><td>特征</td><td>标签</td></tr>"
+                        html+="<tr><td>"+res.pre+"</td><td>"+res.mes+"</td></tr></table>"
+                        $("#t2").html(html)
+                    }else{
+                        alert(res.mes)
+                    }
+                }
+
+            })
+        }
+
+
+
+</script>
+
+    
+ 
+</body>
+</html>
